@@ -1,0 +1,449 @@
+<!--
+  Shell HTML custom du build Web — c'est LA page publiee sur GitHub Pages.
+
+  Trois raisons pour lesquelles elle existe au lieu du shell par defaut de Godot :
+    1. Le shell par defaut est une page grise nue. Celle-ci porte la direction artistique
+       du jeu (Reliquaire Corrompu, ART_DIRECTION_BRIEF.md §2.1/§2.2) : memes tokens de
+       couleur que arena.gd, meme visuel de titre que l'ecran-titre du jeu.
+    2. Le porche "JOUER" n'est pas cosmetique : les navigateurs bloquent l'audio tant que
+       l'utilisateur n'a pas clique. Demarrer le moteur SUR le clic garantit que la musique
+       de Jared part au premier round au lieu d'etre muette.
+    3. Le jeu se joue au clavier a deux. La page le dit AVANT de charger des dizaines de Mo.
+
+  Godot substitue ses placeholders par simple remplacement de chaine, commentaires compris :
+  ne JAMAIS ecrire un jeton "dollar + GODOT_..." ici, il serait remplace lui aussi. Les quatre
+  utilises plus bas sont GODOT_URL, GODOT_CONFIG, GODOT_PROJECT_NAME et GODOT_HEAD_INCLUDE
+  (docs.godotengine.org, "Customizing the Web export HTML page").
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+	<title>Galactic Space Fighter</title>
+	<meta name="description" content="Jeu de combat 2D en registre grimdark. Projet père-fils : lancé par Jared, codé par Eric.">
+	<meta name="theme-color" content="#0B0908">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&display=swap">
+	<style>
+		/* Tokens repris a l'identique de arena.gd (section "Tokens visuels"), pour que la
+		   page d'accueil et le jeu ne soient pas deux univers de couleur differents. */
+		:root {
+			--void:      #0B0908;  /* Suie */
+			--iron:      #1C1A1E;  /* Fer noirci */
+			--gold:      #C99A4A;  /* Laiton profane */
+			--gold-soft: #DDBB78;  /* Laiton clair */
+			--ink:       #E6DFCE;  /* Os */
+			--ink-dim:   #A79A82;  /* Os terni */
+			--ink-mute:  #958A78;  /* Cendre — >=5:1 sur --iron, seuil WCAG AA tenu */
+			--amber:     #D8672E;  /* Braise */
+			--blood:     #7A1414;  /* Sang seche */
+			--rust:      #6B4423;  /* Rouille */
+			--serif: 'Cinzel', 'Trajan Pro', Georgia, 'Times New Roman', serif;
+		}
+
+		* { box-sizing: border-box; }
+		html, body { height: 100%; }
+		body {
+			margin: 0;
+			background: var(--void);
+			color: var(--ink);
+			font-family: var(--serif);
+			overflow: hidden;
+			-webkit-font-smoothing: antialiased;
+		}
+
+		/* ── Le jeu ─────────────────────────────────────────────────────────────── */
+		#canvas {
+			display: block;
+			width: 100%;
+			height: 100%;
+			border: 0;
+			outline: none;
+			background: var(--void);
+			/* Sprites montes a l'echelle : on garde le trait net plutot que le flou du navigateur. */
+			image-rendering: pixelated;
+		}
+		#canvas:focus { outline: none; }
+
+		/* ── Le porche ──────────────────────────────────────────────────────────── */
+		#gate {
+			position: fixed;
+			inset: 0;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			gap: 1.6rem;
+			padding: 2rem 1.25rem;
+			text-align: center;
+			overflow-y: auto;
+			background-color: var(--void);
+			background-image:
+				radial-gradient(ellipse at 50% 22%, rgba(43,16,48,.55) 0%, transparent 62%),
+				linear-gradient(to bottom, rgba(11,9,8,.42) 0%, rgba(11,9,8,.80) 58%, var(--void) 100%),
+				var(--cover, none);
+			background-size: auto, auto, cover;
+			background-position: center, center, center 28%;
+			background-repeat: no-repeat;
+			transition: opacity .45s ease;
+		}
+		#gate.is-leaving { opacity: 0; pointer-events: none; }
+		#gate[hidden] { display: none; }
+
+		.mark {
+			font-size: clamp(1.9rem, 6.2vw, 4.1rem);
+			font-weight: 800;
+			letter-spacing: .10em;
+			line-height: 1.06;
+			margin: 0;
+			color: var(--gold-soft);
+			/* Ombre portee franche, pas de halo : le titre passe sur une illustration chargee,
+			   c'est le contraste qui le rend lisible, pas une lueur. */
+			text-shadow: 0 2px 0 rgba(0,0,0,.9), 0 6px 18px rgba(0,0,0,.75);
+		}
+		.mark small {
+			display: block;
+			margin-top: .7rem;
+			font-size: clamp(.62rem, 1.5vw, .82rem);
+			font-weight: 600;
+			letter-spacing: .42em;
+			text-indent: .42em;
+			color: var(--ink-mute);
+			text-shadow: 0 2px 6px rgba(0,0,0,.9);
+		}
+
+		/* ── Le bouton ──────────────────────────────────────────────────────────── */
+		#play {
+			font-family: var(--serif);
+			font-size: clamp(1rem, 2.4vw, 1.35rem);
+			font-weight: 800;
+			letter-spacing: .30em;
+			text-indent: .30em;
+			color: var(--void);
+			background: linear-gradient(180deg, var(--gold-soft) 0%, var(--gold) 55%, #9d7534 100%);
+			border: 1px solid var(--gold-soft);
+			border-radius: 2px;
+			padding: .95rem 2rem;
+			cursor: pointer;
+			/* Le libelle passe de "Jouer" a "Chargement 100 %" : une largeur plancher evite
+			   que la plaque grandisse d'un coup au clic, puis tressaute a chaque pour cent. */
+			min-width: min(16em, 100%);
+			font-variant-numeric: tabular-nums;
+			/* Plaque de laiton, pas neon : un liset sombre, une elevation neutre, et un
+			   filet clair en haut qui simule la lumiere rasante. Aucune lueur au repos. */
+			box-shadow: 0 0 0 1px rgba(0,0,0,.85), 0 4px 10px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.28);
+			transition: transform .12s ease, box-shadow .2s ease, filter .2s ease;
+		}
+		#play:hover:not(:disabled) {
+			/* La plaque se souleve et prend la lumiere. Elevation + luminosite suffisent au
+			   retour d'etat : pas besoin d'un halo colore pour dire "survole". */
+			transform: translateY(-2px);
+			filter: brightness(1.12);
+			box-shadow: 0 0 0 1px rgba(0,0,0,.85), 0 8px 18px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.38);
+		}
+		#play:active:not(:disabled) { transform: translateY(0); }
+		#play:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; }
+		#play:disabled { filter: grayscale(.7) brightness(.6); cursor: progress; }
+		#play[hidden] { display: none; }
+
+		/* ── Les controles ──────────────────────────────────────────────────────── */
+		.controls {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: center;
+			gap: 1rem;
+			max-width: 760px;
+			width: 100%;
+		}
+		.pad {
+			flex: 1 1 300px;
+			background: rgba(28,26,30,.78);
+			border: 1px solid rgba(107,68,35,.55);
+			border-radius: 2px;
+			padding: .85rem 1rem 1rem;
+			backdrop-filter: blur(3px);
+		}
+		.pad h2 {
+			margin: 0 0 .6rem;
+			font-size: .72rem;
+			font-weight: 800;
+			letter-spacing: .26em;
+			text-indent: .26em;
+			color: var(--ink-dim);
+		}
+		/* Le code couleur joueur porte sur le MOT qui nomme le joueur, pas sur un liseré :
+		   c'est le titre qui designe le panneau, autant le teindre lui. Les valeurs du HUD
+		   (COL_P1 #3E5F99, COL_P2 #C23B3B) mesurent 2.72:1 et 3.28:1 sur Fer noirci — sous
+		   le seuil AA en texte. Ce sont donc leurs teintes eclaircies, a 6.23:1 et 6.13:1
+		   (luminance relative WCAG calculee, pas estimee), contrastes apparies pour qu'aucun
+		   des deux joueurs ne pese plus lourd que l'autre. Meme demarche que COL_INK_MUTE
+		   et COL_BTN_N dans arena.gd, eclaircis pour la meme raison. */
+		.pad--p1 h2 { color: #7E9CD2; }  /* Acier froid eclairci */
+		.pad--p2 h2 { color: #E07E7E; }  /* Sang eclairci */
+		.pad dl {
+			display: grid;
+			grid-template-columns: auto 1fr;
+			gap: .34rem .8rem;
+			margin: 0;
+			font-size: .8rem;
+		}
+		.pad dt { text-align: right; color: var(--ink-mute); font-family: system-ui, sans-serif; }
+		.pad dd { margin: 0; text-align: left; }
+		kbd {
+			display: inline-block;
+			min-width: 1.65em;
+			padding: .1em .42em;
+			font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+			font-size: .78em;
+			line-height: 1.5;
+			color: var(--ink);
+			background: #131114;
+			border: 1px solid var(--rust);
+			border-bottom-width: 2px;
+			border-radius: 3px;
+		}
+		.hint { color: var(--ink-mute); font-size: .74em; }
+
+		.note {
+			max-width: 560px;
+			margin: 0;
+			font-family: system-ui, sans-serif;
+			font-size: .78rem;
+			line-height: 1.6;
+			color: var(--ink-mute);
+		}
+		.note b { color: var(--ink-dim); font-weight: 600; }
+
+		.sig {
+			font-family: system-ui, sans-serif;
+			font-size: .7rem;
+			letter-spacing: .04em;
+			color: #6B6255;
+			margin: 0;
+		}
+
+		/* ── Chargement / erreur ────────────────────────────────────────────────── */
+		#status { width: min(420px, 82vw); }
+		#status[hidden] { display: none; }
+		#bar {
+			height: 3px;
+			background: rgba(107,68,35,.5);
+			border-radius: 2px;
+			overflow: hidden;
+		}
+		/* La progression passe par `transform`, jamais par `width` ni `margin` : ces deux-la
+		   forcent un recalcul de mise en page a chaque image, la ou une transformation reste
+		   sur le compositeur. */
+		#bar > i {
+			display: block;
+			height: 100%;
+			width: 100%;
+			transform: scaleX(0);
+			transform-origin: left center;
+			background: linear-gradient(90deg, var(--rust), var(--amber), var(--gold-soft));
+			transition: transform .25s ease;
+		}
+		/* Barre indeterminee : le serveur ne renvoie pas toujours de Content-Length. */
+		#bar.is-unknown > i {
+			width: 34%;
+			transition: none;
+			animation: sweep 1.15s ease-in-out infinite alternate;
+		}
+		/* 194 % de la largeur du curseur (34 %) = les 66 % de piste qui restent a parcourir. */
+		@keyframes sweep { from { transform: translateX(0); } to { transform: translateX(194%); } }
+
+		#fatal {
+			max-width: 560px;
+			padding: 1rem 1.1rem;
+			border: 1px solid var(--blood);
+			background: rgba(122,20,20,.14);
+			font-family: system-ui, sans-serif;
+			font-size: .82rem;
+			line-height: 1.6;
+			text-align: left;
+			color: var(--ink);
+		}
+		#fatal[hidden] { display: none; }
+		#fatal b { color: var(--amber); }
+
+		@media (prefers-reduced-motion: reduce) {
+			/* `animation-iteration-count: 1` compte autant que la duree : sans lui, une
+			   animation `infinite` reste infinie, juste acceleree. */
+			*, *::before, *::after {
+				animation-duration: .01ms !important;
+				animation-iteration-count: 1 !important;
+				transition-duration: .01ms !important;
+			}
+			/* Le curseur indetermine ne dit plus rien une fois immobile, et finirait fige a
+			   droite de la piste. On le remplace par une piste pleine et sourde : ca signale
+			   "en cours" sans bouger. */
+			#bar.is-unknown > i {
+				width: 100%;
+				animation: none !important;
+				/* Indispensable : la regle de base pose `transform: scaleX(0)`, que seule
+				   l'animation ecrasait. Sans ce `none`, couper l'animation rend la barre
+				   invisible au lieu de pleine. */
+				transform: none;
+				opacity: .45;
+			}
+		}
+	</style>
+	<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+
+</head>
+<body>
+
+<canvas id="canvas" tabindex="-1">
+	Ton navigateur ne sait pas afficher de canvas HTML5.
+</canvas>
+
+<div id="gate">
+	<h1 class="mark">
+		Galactic Space Fighter
+		<small>Reliquaire Corrompu</small>
+	</h1>
+
+	<div class="controls">
+		<section class="pad pad--p1">
+			<h2>Joueur 1</h2>
+			<dl>
+				<dt>Déplacer</dt><dd><kbd>A</kbd> <kbd>D</kbd></dd>
+				<dt>Sauter / s'accroupir</dt><dd><kbd>W</kbd> <kbd>S</kbd></dd>
+				<dt>Faible / fort / spécial</dt><dd><kbd>F</kbd> <kbd>G</kbd> <kbd>H</kbd></dd>
+			</dl>
+		</section>
+		<section class="pad pad--p2">
+			<h2>Joueur 2</h2>
+			<dl>
+				<dt>Déplacer</dt><dd><kbd>&larr;</kbd> <kbd>&rarr;</kbd></dd>
+				<dt>Sauter / s'accroupir</dt><dd><kbd>&uarr;</kbd> <kbd>&darr;</kbd></dd>
+				<dt>Faible / fort / spécial</dt><dd><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <span class="hint">(pavé num.)</span></dd>
+			</dl>
+		</section>
+	</div>
+
+	<button id="play" type="button">Jouer</button>
+
+	<div id="status" hidden>
+		<div id="bar"><i></i></div>
+	</div>
+
+	<div id="fatal" hidden></div>
+
+	<p class="note" id="note">
+		Manette reconnue aussi. <b>Échap</b> revient en arrière dans les menus.
+		La progression est gardée dans ce navigateur.
+	</p>
+
+	<p class="sig">Un projet père-fils &mdash; lancé par Jared, codé par Eric.</p>
+</div>
+
+<script src="index.js"></script>
+<script>
+(function () {
+	'use strict';
+
+	var GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":39075612,"index.wasm":37700666},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+
+	var gate   = document.getElementById('gate');
+	var canvas = document.getElementById('canvas');
+	var play   = document.getElementById('play');
+	var status = document.getElementById('status');
+	var bar    = document.getElementById('bar');
+	var fill   = bar.querySelector('i');
+	var fatal  = document.getElementById('fatal');
+	var note   = document.getElementById('note');
+
+	function die(title, detail) {
+		status.hidden = true;
+		play.hidden = true;
+		fatal.hidden = false;
+		fatal.textContent = '';
+		var strong = document.createElement('b');
+		strong.textContent = title;
+		fatal.appendChild(strong);
+		fatal.appendChild(document.createElement('br'));
+		fatal.appendChild(document.createTextNode(detail));
+	}
+
+	// Visuel de titre — meme image que l'ecran-titre du jeu. Purement decoratif : s'il
+	// manque (copie CI ratee), la page reste lisible sur fond Suie, on ne casse rien.
+	var cover = new Image();
+	cover.onload = function () {
+		gate.style.setProperty('--cover', 'url("cover.png")');
+	};
+	cover.src = 'cover.png';
+
+	if (typeof Engine === 'undefined') {
+		die('Le moteur n\'a pas pu être chargé.',
+			'Le fichier du moteur est introuvable ou bloqué. Recharge la page ; si ça persiste, essaie un autre navigateur.');
+		return;
+	}
+
+	// Godot 4 ne cible que WebGL 2 sur le web (moteur Compatibilite). Sans WebGL 2, autant
+	// le dire tout de suite plutot que de laisser tourner un ecran noir.
+	if (typeof Engine.isWebGLAvailable === 'function' && !Engine.isWebGLAvailable(2)) {
+		die('WebGL 2 indisponible.',
+			'Ce navigateur n\'expose pas WebGL 2, dont le jeu a besoin. Sur Chrome, Edge ou Firefox à jour, vérifie que l\'accélération matérielle est activée.');
+		return;
+	}
+
+	// Pas de commandes tactiles dans le jeu : autant prevenir avant le telechargement.
+	if (window.matchMedia('(pointer: coarse)').matches) {
+		note.textContent = '';
+		var b = document.createElement('b');
+		b.textContent = 'Un clavier est nécessaire';
+		note.appendChild(b);
+		note.appendChild(document.createTextNode(
+			' : le jeu n\'a pas de commandes tactiles. Sur téléphone ou tablette, branche un clavier ou une manette.'));
+	}
+
+	var engine = new Engine(GODOT_CONFIG);
+	var started = false;
+
+	play.addEventListener('click', function () {
+		if (started) { return; }
+		started = true;
+
+		play.disabled = true;
+		play.textContent = 'Chargement';
+		status.hidden = false;
+		bar.classList.add('is-unknown');
+
+		engine.startGame({
+			canvas: canvas,
+			onProgress: function (current, total) {
+				// total vaut 0 quand le serveur ne renvoie pas de Content-Length : on garde
+				// alors la barre indeterminee plutot que d'afficher un faux 0 %.
+				if (total > 0) {
+					bar.classList.remove('is-unknown');
+					var pct = Math.min(100, Math.round((current / total) * 100));
+					fill.style.transform = 'scaleX(' + (pct / 100) + ')';
+					// Le bouton porte lui-meme le compteur : un seul endroit ou lire l'etat,
+					// et pas de saut de mise en page pendant le telechargement.
+					play.textContent = 'Chargement ' + pct + ' %';
+				}
+			}
+		}).then(function () {
+			gate.classList.add('is-leaving');
+			window.setTimeout(function () { gate.hidden = true; }, 480);
+			canvas.focus();
+		}).catch(function (err) {
+			started = false;
+			die('Le jeu n\'a pas démarré.', String(err && err.message ? err.message : err));
+		});
+	});
+
+	// Le canvas perd le focus des qu'on clique a cote : sans ca le clavier ne repond plus.
+	window.addEventListener('click', function () {
+		if (gate.hidden) { canvas.focus(); }
+	});
+})();
+</script>
+
+</body>
+</html>
+
