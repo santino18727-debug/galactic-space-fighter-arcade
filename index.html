@@ -392,7 +392,7 @@
 (function () {
 	'use strict';
 
-	var GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":39099112,"index.wasm":37700666},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+	var GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":39099016,"index.wasm":37700666},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 
 	var gate   = document.getElementById('gate');
 	var canvas = document.getElementById('canvas');
@@ -438,13 +438,25 @@
 	}
 
 	// Pas de commandes tactiles dans le jeu : autant prevenir avant le telechargement.
+	// Sur appareil tactile, le tableau clavier ci-dessus ne décrit pas ce que le joueur va
+	// réellement utiliser : depuis ADR-005 le jeu construit un overlay tactile (stick + 4
+	// boutons) en mode Histoire. Trois faits à énoncer, tous trois vérifiés dans arena.gd
+	// plutôt que supposés :
+	//   - à l'horizontale : en portrait, la garde d'orientation (D5) bloque le jeu ;
+	//   - mêmes lettres qu'à la manette (B/A) : le lexique d'entrée ne change pas d'un
+	//     support à l'autre, c'est tout l'intérêt de l'avoir garde ;
+	//   - le 2 JOUEURS n'existe PAS ici, et un clavier branché n'y change rien :
+	//     touch_mode_active est résolu une seule fois depuis les features de plateforme
+	//     (arena.gd l.762) et conditionne la construction de l'entrée (l.1624).
 	if (window.matchMedia('(pointer: coarse)').matches) {
 		note.textContent = '';
 		var b = document.createElement('b');
-		b.textContent = 'Un clavier est nécessaire';
+		b.textContent = 'Commandes tactiles à l\'écran';
 		note.appendChild(b);
 		note.appendChild(document.createTextNode(
-			' : le jeu n\'a pas de commandes tactiles. Sur téléphone ou tablette, branche un clavier ou une manette.'));
+			' : mode Histoire, téléphone à l\'horizontale. Les boutons reprennent les mêmes '
+			+ 'lettres que la manette — B coup faible, A coup fort. Le 2 joueurs reste réservé '
+			+ 'à l\'ordinateur.'));
 	}
 
 	var engine = new Engine(GODOT_CONFIG);
