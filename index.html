@@ -182,15 +182,34 @@
 		   et COL_BTN_N dans arena.gd, eclaircis pour la meme raison. */
 		.pad--p1 h2 { color: #7E9CD2; }  /* Acier froid eclairci */
 		.pad--p2 h2 { color: #E07E7E; }  /* Sang eclairci */
-		.pad dl {
-			display: grid;
-			grid-template-columns: auto 1fr;
-			gap: .34rem .8rem;
-			margin: 0;
+		/* Un tableau et pas une liste de definitions : il y a bien deux dimensions ici,
+		   la fonction ET la disposition du clavier. Le jeu utilise des codes de touches,
+		   qui tombent sur Z Q S D en AZERTY et W A S D en QWERTY — la meme touche
+		   physique, deux etiquettes. Autant montrer les deux plutot que trancher pour
+		   un lecteur dont on ne connait pas le clavier. */
+		.keys {
+			border-collapse: collapse;
+			width: 100%;
 			font-size: .8rem;
 		}
-		.pad dt { text-align: right; color: var(--ink-mute); font-family: system-ui, sans-serif; }
-		.pad dd { margin: 0; text-align: left; }
+		.keys th, .keys td { padding: .2rem .3rem; font-weight: 400; }
+		.keys thead th {
+			font-family: system-ui, sans-serif;
+			font-size: .6rem;
+			font-weight: 700;
+			letter-spacing: .14em;
+			color: #6B6255;
+			text-align: center;
+			padding-bottom: .1rem;
+		}
+		.keys tbody th {
+			text-align: right;
+			color: var(--ink-mute);
+			font-family: system-ui, sans-serif;
+			white-space: nowrap;
+		}
+		.keys td { text-align: center; }
+		.keys .both { color: var(--ink-mute); font-family: system-ui, sans-serif; font-size: .92em; }
 		kbd {
 			display: inline-block;
 			min-width: 1.65em;
@@ -309,19 +328,46 @@
 	<div class="controls">
 		<section class="pad pad--p1">
 			<h2>Joueur 1</h2>
-			<dl>
-				<dt>Déplacer</dt><dd><kbd>A</kbd> <kbd>D</kbd></dd>
-				<dt>Sauter / s'accroupir</dt><dd><kbd>W</kbd> <kbd>S</kbd></dd>
-				<dt>Faible / fort / spécial</dt><dd><kbd>F</kbd> <kbd>G</kbd> <kbd>H</kbd></dd>
-			</dl>
+			<table class="keys">
+				<thead>
+					<tr><td></td><th scope="col">AZERTY</th><th scope="col">QWERTY</th></tr>
+				</thead>
+				<tbody>
+					<tr>
+						<th scope="row">Déplacer</th>
+						<td><kbd>Q</kbd> <kbd>D</kbd></td>
+						<td><kbd>A</kbd> <kbd>D</kbd></td>
+					</tr>
+					<tr>
+						<th scope="row">Sauter / s'accroupir</th>
+						<td><kbd>Z</kbd> <kbd>S</kbd></td>
+						<td><kbd>W</kbd> <kbd>S</kbd></td>
+					</tr>
+					<tr>
+						<th scope="row">Faible / fort / spécial</th>
+						<td colspan="2"><kbd>F</kbd> <kbd>G</kbd> <kbd>H</kbd> <span class="both">— identique</span></td>
+					</tr>
+				</tbody>
+			</table>
 		</section>
 		<section class="pad pad--p2">
 			<h2>Joueur 2</h2>
-			<dl>
-				<dt>Déplacer</dt><dd><kbd>&larr;</kbd> <kbd>&rarr;</kbd></dd>
-				<dt>Sauter / s'accroupir</dt><dd><kbd>&uarr;</kbd> <kbd>&darr;</kbd></dd>
-				<dt>Faible / fort / spécial</dt><dd><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <span class="hint">(pavé num.)</span></dd>
-			</dl>
+			<table class="keys">
+				<tbody>
+					<tr>
+						<th scope="row">Déplacer</th>
+						<td><kbd>&larr;</kbd> <kbd>&rarr;</kbd></td>
+					</tr>
+					<tr>
+						<th scope="row">Sauter / s'accroupir</th>
+						<td><kbd>&uarr;</kbd> <kbd>&darr;</kbd></td>
+					</tr>
+					<tr>
+						<th scope="row">Faible / fort / spécial</th>
+						<td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <span class="hint">(pavé num.)</span></td>
+					</tr>
+				</tbody>
+			</table>
 		</section>
 	</div>
 
