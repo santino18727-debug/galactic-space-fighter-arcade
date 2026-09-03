@@ -148,6 +148,43 @@
 		#play:disabled { filter: grayscale(.7) brightness(.6); cursor: progress; }
 		#play[hidden] { display: none; }
 
+		/* ── Plein écran ────────────────────────────────────────────────────────── */
+		/* Action secondaire : même famille que la plaque de laiton, mais en creux (contour
+		   seul) -- la hiérarchie doit rester lisible d'un coup d'oeil, "Jouer" est l'action
+		   principale et ne doit pas avoir de rival visuel plein. */
+		#fs {
+			font-family: var(--serif);
+			font-size: clamp(.78rem, 1.6vw, .92rem);
+			font-weight: 600;
+			letter-spacing: .18em;
+			text-indent: .18em;
+			color: var(--gold-soft);
+			background: rgba(28,26,30,.72);
+			border: 1px solid var(--rust);
+			border-radius: 2px;
+			padding: .5rem 1.4rem;
+			cursor: pointer;
+			transition: color .2s ease, border-color .2s ease, background .2s ease;
+		}
+		#fs:hover { color: var(--ink); border-color: var(--gold); background: rgba(28,26,30,.9); }
+		#fs:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+		#fs[hidden] { display: none; }
+
+		/* Une fois le jeu lancé, le porche disparaît : le bouton se replie dans un coin, en
+		   retrait, pour rester atteignable sans manger de terrain de jeu. En HAUT À GAUCHE et
+		   pas à droite : sur tactile, la colonne de droite porte les 4 boutons d'action
+		   (touch_overlay.gd) -- s'y superposer volerait des appuis à SPÉCIAL. */
+		#fs.is-corner {
+			position: fixed;
+			top: .6rem;
+			left: .6rem;
+			z-index: 10;
+			opacity: .45;
+			padding: .4rem .9rem;
+			font-size: .72rem;
+		}
+		#fs.is-corner:hover, #fs.is-corner:focus-visible { opacity: 1; }
+
 		/* ── Les controles ──────────────────────────────────────────────────────── */
 		.controls {
 			display: flex;
@@ -373,6 +410,8 @@
 
 	<button id="play" type="button">Jouer</button>
 
+	<button id="fs" type="button">Plein écran</button>
+
 	<div id="status" hidden>
 		<div id="bar"><i></i></div>
 	</div>
@@ -402,6 +441,56 @@
 	var fill   = bar.querySelector('i');
 	var fatal  = document.getElementById('fatal');
 	var note   = document.getElementById('note');
+	var fs     = document.getElementById('fs');
+
+	// ── Plein écran ───────────────────────────────────────────────────────────────────
+	// Sur mobile, c'est ce qui récupère la barre d'adresse du navigateur : quelques dizaines
+	// de pixels de hauteur, qui élargissent d'autant les bandes latérales du letterbox --
+	// donc la place réellement disponible pour les commandes tactiles (ADR-005, régime B).
+	// `document.fullscreenElement` plutôt qu'un booléen à nous : l'utilisateur peut sortir
+	// par Échap ou un geste système, sans passer par ce bouton, et l'état doit suivre.
+	function fsActif() {
+		return !!(document.fullscreenElement || document.webkitFullscreenElement);
+	}
+
+	function majBoutonFs() {
+		fs.textContent = fsActif() ? 'Quitter le plein écran' : 'Plein écran';
+	}
+
+	fs.addEventListener('click', function () {
+		if (fsActif()) {
+			(document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document);
+			return;
+		}
+		var el = document.documentElement;
+		var req = el.requestFullscreen || el.webkitRequestFullscreen;
+		if (!req) { return; }
+		// `.catch` : Safari/iOS rejette la promesse au lieu de lever, et un refus utilisateur
+		// ne doit pas remonter en erreur non capturée dans la console.
+		var p = req.call(el);
+		if (p && p.then) {
+			p.then(function () {
+				// Le verrouillage d'orientation EXIGE le plein écran -- c'est précisément
+				// pourquoi UX_SPEC.md §11.10 le déclarait hors de portée et se rabattait sur
+				// une garde passive. En plein écran il redevient permis : on tente, et la
+				// garde reste là comme filet là où l'API n'existe pas (Safari iOS).
+				try {
+					if (screen.orientation && screen.orientation.lock) {
+						screen.orientation.lock('landscape').catch(function () {});
+					}
+				} catch (e) { /* non supporté : la garde d'orientation prend le relais */ }
+			}).catch(function () {});
+		}
+	});
+
+	document.addEventListener('fullscreenchange', majBoutonFs);
+	document.addEventListener('webkitfullscreenchange', majBoutonFs);
+
+	// Aucune API de plein écran (vieux navigateur, iframe sans autorisation) : plutôt qu'un
+	// bouton qui ne fait rien, pas de bouton du tout.
+	if (!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) {
+		fs.hidden = true;
+	}
 
 	function die(title, detail) {
 		status.hidden = true;
@@ -487,6 +576,11 @@
 			}
 		}).then(function () {
 			gate.classList.add('is-leaving');
+			// Le bouton plein écran SORT du porche avant que celui-ci ne disparaisse : sinon il
+			// serait emporté avec lui (`#gate[hidden]`) et deviendrait inatteignable une fois
+			// le jeu lancé -- exactement le moment où on en a le plus besoin.
+			document.body.appendChild(fs);
+			fs.classList.add('is-corner');
 			window.setTimeout(function () { gate.hidden = true; }, 480);
 			canvas.focus();
 		}).catch(function (err) {
